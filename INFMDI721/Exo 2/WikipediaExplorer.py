@@ -21,11 +21,11 @@ def recurse_parseLink(url, alreadyParse, actualLevel):
         return actualLevel
     else :
         actualLevel +=1
+        alreadyParse.append(actualWorld)
         if actualLevel > max_level:
             return not_found;
         html = requests.get(wikipediaUrl + actualWorld)
         bs = BeautifulSoup(html.text, 'html.parser')
-        alreadyParse.append(actualWorld)
         for link in bs.find_all('a', href=True):
             url = link.get('href')
             if wikipediaUrl in url:
@@ -37,6 +37,7 @@ def recurse_parseLink(url, alreadyParse, actualLevel):
                 if level != not_found:
                     print(level)
     return not_found
+
 
 ## Scrap the wikipedia throw the wikipedia API. Simple and faster than the BS try
 def recurse_parse_link_api(actualWorld, alreadyParse, actualLevel):
