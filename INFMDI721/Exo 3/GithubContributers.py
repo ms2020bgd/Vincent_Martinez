@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from github import Github
 import concurrent.futures
 
-github = Github("b735751a80bc51e4ca25a5f131a2617fca17a25f")
+github = Github("47143283dfb91edf2b70188c07e4af91d045f3be")
 
 async def githubScrapping(url) :
     # Github seems to be a javascript  generated page
@@ -34,15 +34,18 @@ async def githubScrapping(url) :
         contrib.append(td.text)
 
     await browser.close()
-    return contrib
 
-def github_user_star(contrib):
+    # Let's cut if
 
-    import json
+    users = {}
+    for c in contrib:
+        user_id = c.split(" ")[0]
+        name = c.replace(user_id, '').replace('(', '').replace(')', '').strip();
+        users[user_id] = name
 
+    return users
 
-    user_id = contrib.split(" ")[0]
-
+def github_user_star(user_id):
     #repositories = requests.get("https://api.github.com/users/"+user_id+"/repos").json()
     #print(repositories)
 
@@ -66,15 +69,16 @@ async def github_api(contribs):
     # Can't have more than 2 threads; github stop with a abuse detection mechanism
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
-    futures = [asyncio.get_event_loop().run_in_executor(executor, github_user_star, contrib) for contrib in contribs]
+    futures = [asyncio.get_event_loop().run_in_executor(executor, github_user_star, contrib) for contrib in contribs.keys()]
     star_mean = await asyncio.gather(*futures)
     out = {}
     for d in star_mean:
         for k,v in d.items():
            out[k] = v
+
     print(star_mean)
-    contributors = sorted(out, key=out.get)
-    print(contributors)
+    contributors = sorted(out, key=out.get, reverse=True)
+
     return contributors
 
 
