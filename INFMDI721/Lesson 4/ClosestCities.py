@@ -36,6 +36,6 @@ for element in itertools.product(*cct):
     if not distance.get(element):
 
         result = requests.get("https://fr.distance24.org/route.json?stops="+element[0]+"|"+element[1]).json()
-        distance[element[0]+"|"+element[1]] = result["distance"]
+        distance[element] = result["distance"]
 
 print(distance)
