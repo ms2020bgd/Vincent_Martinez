@@ -1,4 +1,4 @@
-package main.scala.paristech
+package paristech
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
@@ -29,14 +29,11 @@ object Preprocessor extends App {
   // Import the dataFrame
   import spark.implicits._
   val dataset = spark.read.option("header", true)
-    .option("multiline", true).text("/home/martinez/git/ms2020bgd/SD701/airbnb/airbnb_paris.csv")
+    .option("multiline", true).text("/tmp/airbnb/airbnb_paris.csv")
   dataset.printSchema()
 
   val toSave = dataset.withColumn("value", regexp_replace($"value", "\"\"", ""))
 
-  val datasetcsv = spark.read.option("header", true)
-    .option("multiline", true).csv("/home/martinez/git/ms2020bgd/SD701/airbnb/airbnb_paris.csv")
 
-  datasetcsv.select("host_about").show(false)
-  toSave.write.text("/home/martinez/git/ms2020bgd/SD701/airbnb/airbnb_paris2.csv")
+   toSave.coalesce(1).write.text("/tmp/airbnb/airbnb_paris2.csv")
 }
