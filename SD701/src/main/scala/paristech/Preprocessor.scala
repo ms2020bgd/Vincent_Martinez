@@ -29,11 +29,11 @@ object Preprocessor extends App {
   // Import the dataFrame
   import spark.implicits._
   val dataset = spark.read.option("header", true)
-    .option("multiline", true).text("/tmp/airbnb/airbnb_paris.csv")
+    .option("multiline", true).text("./airbnb/airbnb_paris.csv")
   dataset.printSchema()
 
   val toSave = dataset.withColumn("value", regexp_replace($"value", "\"\"", ""))
 
 
-   toSave.coalesce(1).write.text("/tmp/airbnb/airbnb_paris2.csv")
+   toSave.coalesce(1).write.text("./airbnb/airbnb_paris2.csv")
 }

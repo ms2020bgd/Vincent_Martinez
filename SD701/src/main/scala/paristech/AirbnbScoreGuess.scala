@@ -17,8 +17,10 @@ import org.apache.spark.ml.regression.LinearRegression
 import org.apache.spark.ml.regression.{ RandomForestRegressionModel, RandomForestRegressor }
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.ml.tuning.ParamGridBuilder
+import org.apache.spark.ml.tuning.TrainValidationSplit
 
-object AirbnbScoreGuest extends App {
+object AirbnbScoreGuess extends App {
 
   val conf = new SparkConf().setAll(Map(
     "spark.scheduler.mode" -> "FIFO",
@@ -29,14 +31,14 @@ object AirbnbScoreGuest extends App {
     "spark.shuffle.file.buffer" -> "32k",
     "spark.default.parallelism" -> "12",
     "spark.sql.shuffle.partitions" -> "12",
-    "spark.driver.maxResultSize" -> "2g"
+    "spark.driver.maxResultSize" -> "4g" 
     //,"spark.master" -> "local[*]"
     ))
 
   val spark = SparkSession
     .builder
     .config(conf)
-    .appName("TP Spark : Trainer")
+    .appName("Airbnb Score Guess")
     .getOrCreate()
 
   spark.sparkContext.setLogLevel("WARN")
@@ -46,7 +48,7 @@ object AirbnbScoreGuest extends App {
   val datasetNew = spark.read.option("header", true)
     .option("multiline", true).csv("/tmp/airbnb/airbnb_paris2.csv")
   datasetNew.printSchema()
-  datasetNew.select("interaction").show(false)
+  //datasetNew.select("number_of_reviews").show(10000,false)
 
   // On recupere les colonnes qui nous interessent
 
@@ -67,13 +69,24 @@ object AirbnbScoreGuest extends App {
     .withColumn("room_type", when($"room_type".isNull, "unknown").otherwise($"room_type"))
     .withColumn("property_type", when($"property_type".isNull, "unknown").otherwise($"property_type"))
     .withColumn("neighbourhood", when($"neighbourhood".isNull, "unknown").otherwise($"neighbourhood"))
+    .withColumn("number_of_reviews", $"number_of_reviews".cast("Int"))
 
-  val subDataSet = datasetTypes.select("accommodates", "bathrooms", "guests_included", "bedrooms", "beds",
+  val subDataSetWithoutScore = datasetTypes.select("review_scores_location","review_scores_accuracy","review_scores_communication","review_scores_cleanliness","review_scores_value","review_scores_checkin"  ,"number_of_reviews", "accommodates", "bathrooms", "guests_included", "bedrooms", "beds",
     "price", "cleaning_fee", "bedrooms", "text", "property_type", "room_type", "neighbourhood", "review_scores_rating", "amenities")
     .withColumn("review_scores_rating", $"review_scores_rating".cast("Double"))
-    .filter(!$"review_scores_rating".isNull).filter(!$"price".isNull)
+    .withColumn("review_scores_location", $"review_scores_location".cast("Double")).filter(!$"review_scores_location".isNull)
+    .withColumn("review_scores_accuracy", $"review_scores_accuracy".cast("Double")).filter(!$"review_scores_accuracy".isNull)
+    .withColumn("review_scores_communication", $"review_scores_communication".cast("Double")).filter(!$"review_scores_communication".isNull)
+    .withColumn("review_scores_cleanliness", $"review_scores_cleanliness".cast("Double")).filter(!$"review_scores_cleanliness".isNull)
+    .withColumn("review_scores_value", $"review_scores_value".cast("Double")).filter(!$"review_scores_value".isNull)
+    .withColumn("review_scores_checkin", $"review_scores_checkin".cast("Double")).filter(!$"review_scores_checkin".isNull)
+    .filter(!$"review_scores_rating".isNull).filter(!$"price".isNull).filter($"number_of_reviews" =!= 0)
 
-  // Get distinct tags array
+    
+ val subDataSet = subDataSetWithoutScore.withColumn("mean_score", ($"review_scores_rating"/10.0 +
+     $"review_scores_location"+$"review_scores_communication"+$"review_scores_cleanliness"+$"review_scores_value"+$"review_scores_checkin")*10.0/7.0)   
+      
+  // Get distinct tags array+ $"review_scores_rating"+ 
   val amenities = subDataSet
     .flatMap(r ⇒ r.getAs[Seq[String]]("amenities"))
     .distinct()
@@ -101,28 +114,35 @@ object AirbnbScoreGuest extends App {
   val tokenizer = new RegexTokenizer().setPattern("\\W+").setGaps(true).setInputCol("text").setOutputCol("tokens")
   val stopWordRemover = new StopWordsRemover().setInputCol(tokenizer.getOutputCol).setOutputCol("filtered")
 
-  val countVectorizer = new CountVectorizer().setInputCol(stopWordRemover.getOutputCol).setOutputCol("TF")
+  val countVectorizer = new CountVectorizer().setInputCol(stopWordRemover.getOutputCol).setOutputCol("TF").setMinDF(30)
 
   //    val dataSetHashing = new HashingTF().setInputCol("filtered").setOutputCol("features").transform(dataSetCountVect)
   //
   val IDF = new IDF().setInputCol(countVectorizer.getOutputCol).setOutputCol("tfidf")
 
   val vectorAssembler = new VectorAssembler().setInputCols(Array(
+//      "review_scores_location","review_scores_location","review_scores_accuracy","review_scores_communication","review_scores_cleanliness","review_scores_value","review_scores_checkin"
+//)).setOutputCol("features_assembled")
+//
+//      //      
     "tfidf",
-    "room_onehot", "property_onehot", "neighbourhood_onehot", "features",
-    "accommodates", "bathrooms", "guests_included", "bedrooms", "beds",
-    "price", "cleaning_fee")).setOutputCol("features_assembled")
+    "room_onehot", "property_onehot",
+    "neighbourhood_onehot", "features", "accommodates", "bathrooms", "guests_included", "bedrooms", "beds", "price", "number_of_reviews", "cleaning_fee")).setOutputCol("features_assembled")
 
-  val rf = new RandomForestRegressor().setLabelCol("review_scores_rating").setFeaturesCol("features_assembled")
+  val rf = new RandomForestRegressor().setLabelCol("mean_score").setFeaturesCol("features_assembled")
 
   val lr = new LinearRegression()
-    .setLabelCol("review_scores_rating")
+    .setLabelCol("mean_score")
     .setFitIntercept(true)
-    .setFeaturesCol("features_assembled")
-    .setRegParam(0.2)
-    .setMaxIter(100)
+    .setFeaturesCol(vectorAssembler.getOutputCol)
+    .setPredictionCol("prediction")
+    .setRegParam(0.1)
+    .setElasticNetParam(0.0)
+    .setEpsilon(10-8)
+    .setMaxIter(1000)
 
-  val pipeline: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, countVectorizer, IDF, indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssembler, rf))
+  val pipeline: Pipeline = new Pipeline().setStages(Array( tokenizer, stopWordRemover, countVectorizer, IDF,
+    indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssembler, lr))
 
   val Array(training, test) = dataSetFull.randomSplit(Array(0.9, 0.1), 999)
 
@@ -130,11 +150,28 @@ object AirbnbScoreGuest extends App {
   val dfWithSimplePredictions = model.transform(test)
 
   val evaluator = new RegressionEvaluator()
-    .setLabelCol("review_scores_rating")
+    .setLabelCol("mean_score")
     .setPredictionCol("prediction")
     .setMetricName("rmse")
 
   val rmse = evaluator.evaluate(dfWithSimplePredictions)
-  println(s"Root Mean Squared Error (RMSE) on test data = $rmse")
 
+  dfWithSimplePredictions.select("mean_score", "prediction").show(100,false)
+  
+  println(s"Root Mean Squared Error (RMSE) on test data = $rmse")
+  
+  val paramGrid = new ParamGridBuilder().addGrid(lr.elasticNetParam, Array(1e-8, 1e-6, 1e-4, 1e-2))
+                  .addGrid(lr.regParam, (0.01 to 0.3 by 0.01).toArray)
+                  .addGrid(countVectorizer.minDF, (30.0 to 1500.0 by 30.0).toArray)
+                  .build()
+
+  val trainValidationSplit = new TrainValidationSplit().setEstimator(pipeline).setEvaluator(evaluator).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+  
+  val trainSplit = trainValidationSplit.fit(training)
+  val testTransformed = trainSplit.transform(test)
+  val mse = evaluator.evaluate(testTransformed)
+  println(s"Root Mean Squared = ${mse}")
+  
+  trainSplit.save("/tmp/airbnb/model.sav")
+  
 }
