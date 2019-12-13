@@ -38,6 +38,8 @@ public class ReduceFunction {
 			// In order to have a msg in my program, I write the line
 			//System.out.println(str);
 		}
+		
+		
 		reader.close();
 
 	}
@@ -46,8 +48,9 @@ public class ReduceFunction {
 		File f = new File(directory);
 
 		// On procède a tous les fichiers de shuffle
-		Arrays.asList(f.listFiles()).parallelStream().forEach(l -> {
+		Arrays.asList(f.listFiles()).stream().forEach(l -> {
 			try {
+				System.out.println("Reducing "+l);
 				wordCount(l);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block

@@ -105,6 +105,8 @@ public class MasterScheduler {
 		// First step, checking the slave's PC
 		List<String> availablePCs = getAvailables();
 
+		System.out.println("The available PC are : "+availablePCs);
+		
 		// Second, split and copy
 		// The file is given in the main
 		

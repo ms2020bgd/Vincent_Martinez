@@ -22,7 +22,7 @@ import java.util.StringTokenizer;
 public class MapFunction {
 
 	String directory;
-	Map<Integer, FileWriter> writers = new HashMap<Integer, FileWriter>();
+	Map<Long, FileWriter> writers = new HashMap<Long, FileWriter>();
 	int machineCount;
 
 	// HashMap<String, ArrayList<Integer>> maps = new HashMap<String,
@@ -79,7 +79,7 @@ public class MapFunction {
 				if (!word.isEmpty()) {
 
 					// Compute the hashcode of the word
-					int machineTarget = word.hashCode() % machineCount;
+					long machineTarget =  Integer.toUnsignedLong(word.hashCode()) % machineCount;
 
 					//
 					FileWriter writer = writers.get(machineTarget);

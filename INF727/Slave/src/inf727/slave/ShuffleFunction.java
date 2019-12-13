@@ -30,7 +30,7 @@ public class ShuffleFunction {
 		Arrays.asList(f.listFiles()).parallelStream().forEach(l -> {
 			String splits = l.getName().split("_")[0];
 			// Convert to int
-			long value = Long.valueOf(splits);
+			int value = Integer.valueOf(splits);
 			// Modulus from the pcs count
 			int index = (int) (value % reducer.size());
 			// Choose the corresponding pc
@@ -39,7 +39,7 @@ public class ShuffleFunction {
 			// Send the file to the corresponding directory
 
 			try {
-				if (InetAddress.getLocalHost().equals(InetAddress.getByName(host))) {
+				if (!InetAddress.getLocalHost().equals(InetAddress.getByName(host))) {
 					String scp = "scp " + l.getAbsolutePath() + " vmartinez@" + host + ":/tmp/vmartinez/shuffle/";
 
 					// Let's copy!
