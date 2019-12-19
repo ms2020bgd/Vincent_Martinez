@@ -11,6 +11,7 @@
 #  - $2 : [optional] path to spark directory
 set -o pipefail
 
+
 echo -e "\n --- building .jar --- \n"
 
 sbt assembly || { echo 'Build failed' ; exit 1; }

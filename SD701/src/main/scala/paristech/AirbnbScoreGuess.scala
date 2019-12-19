@@ -70,7 +70,9 @@ object AirbnbScoreGuess extends App {
     .withColumn("space", when($"space".isNull, "").otherwise($"space"))
     .withColumn("description", when($"description".isNull, "").otherwise($"description"))
     .withColumn("neighborhood_overview", when($"neighborhood_overview".isNull, "").otherwise($"neighborhood_overview"))
-    .withColumn("text", concat_ws(" ", $"name", $"summary", $"space", $"description", $"neighborhood_overview"))
+    .withColumn("text", concat_ws(" ", $"name", $"summary", 
+	//$"space", 
+	$"description", $"neighborhood_overview"))
     .withColumn("amenities", regexp_replace($"amenities", "[{|}]", "")).withColumn("amenities", split($"amenities", ","))
     .withColumn("room_type", when($"room_type".isNull, "unknown").otherwise($"room_type"))
     .withColumn("property_type", when($"property_type".isNull, "unknown").otherwise($"property_type"))
@@ -78,7 +80,7 @@ object AirbnbScoreGuess extends App {
     .withColumn("number_of_reviews", $"number_of_reviews".cast("Int"))
 
   val subDataSetWithoutScore = datasetTypes.select("review_scores_location", "review_scores_accuracy", "review_scores_communication", "review_scores_cleanliness", "review_scores_value", "review_scores_checkin", "review_scores_rating", "number_of_reviews", "accommodates", "bathrooms", "guests_included", "bedrooms", "beds",
-    "price", "weekly_price", "cleaning_fee", "text", "property_type", "room_type", "neighbourhood", "amenities")
+    "price", "weekly_price", "cleaning_fee", "text", "property_type", "room_type", "neighbourhood", "amenities", "space")
     .withColumn("review_scores_rating", $"review_scores_rating".cast("Double")).filter(!$"review_scores_rating".isNull)
     .withColumn("review_scores_location", $"review_scores_location".cast("Double")).filter(!$"review_scores_location".isNull)
     .withColumn("review_scores_accuracy", $"review_scores_accuracy".cast("Double")).filter(!$"review_scores_accuracy".isNull)
@@ -155,8 +157,19 @@ object AirbnbScoreGuess extends App {
   //
   val IDF = new IDF().setInputCol(countVectorizer.getOutputCol).setOutputCol("tfidf")
 
+  val tokenizerSpace = new RegexTokenizer().setPattern("\\W+").setGaps(true).setInputCol("space").setOutputCol("tokensSpace")
+  val stopWordRemoverSpace = new StopWordsRemover().setInputCol(tokenizerSpace.getOutputCol).setOutputCol("filteredSpace")
+  val stopWordRemoverFrSpace = new StopWordsRemover().setInputCol(stopWordRemoverSpace.getOutputCol).setOutputCol("filteredFrSpace").setLocale(Locale.FRENCH.toString())
+
+  val countVectorizerSpace = new CountVectorizer().setInputCol(stopWordRemoverFrSpace.getOutputCol).setOutputCol("TFSpace").setVocabSize(200)
+
+  //
+  val IDFSpace = new IDF().setInputCol(countVectorizer.getOutputCol).setOutputCol("tfidf_space")
+
+
   val vectorAssemblerMeanScore = new VectorAssembler().setInputCols(Array(
     "tfidf",
+    "tfidf_space",
     "room_onehot", "property_onehot",
     "neighbourhood_onehot", "features",
     "accommodates",
@@ -180,6 +193,7 @@ object AirbnbScoreGuess extends App {
 
   val vectorAssemblerWeeklyPrice = new VectorAssembler().setInputCols(Array(
     "tfidf",
+    "tfidf_space",
     "room_onehot",
     "property_onehot",
     "neighbourhood_onehot",
@@ -209,7 +223,7 @@ object AirbnbScoreGuess extends App {
     .setTol(1e-8)
     .setMaxIter(1000)
 
-  val pipeline: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF,
+  val pipeline: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF, tokenizerSpace, stopWordRemoverSpace, stopWordRemoverFrSpace, countVectorizerSpace, IDFSpace,
     indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerMeanScore, vectorAssemblerWeeklyPrice, rfMeanScore, rfCatScore, rfPrice, lrMeanScore))
 
   val Array(training, test) = dataSetFull.randomSplit(Array(0.9, 0.1), 999)
