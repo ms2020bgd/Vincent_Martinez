@@ -70,9 +70,7 @@ object AirbnbScoreGuess extends App {
     .withColumn("space", when($"space".isNull, "").otherwise($"space"))
     .withColumn("description", when($"description".isNull, "").otherwise($"description"))
     .withColumn("neighborhood_overview", when($"neighborhood_overview".isNull, "").otherwise($"neighborhood_overview"))
-    .withColumn("text", concat_ws(" ", $"name", $"summary", 
-	//$"space", 
-	$"description", $"neighborhood_overview"))
+    .withColumn("text", concat_ws(" ", $"name", $"summary", $"description", $"neighborhood_overview"))
     .withColumn("amenities", regexp_replace($"amenities", "[{|}]", "")).withColumn("amenities", split($"amenities", ","))
     .withColumn("room_type", when($"room_type".isNull, "unknown").otherwise($"room_type"))
     .withColumn("property_type", when($"property_type".isNull, "unknown").otherwise($"property_type"))
@@ -80,7 +78,7 @@ object AirbnbScoreGuess extends App {
     .withColumn("number_of_reviews", $"number_of_reviews".cast("Int"))
 
   val subDataSetWithoutScore = datasetTypes.select("review_scores_location", "review_scores_accuracy", "review_scores_communication", "review_scores_cleanliness", "review_scores_value", "review_scores_checkin", "review_scores_rating", "number_of_reviews", "accommodates", "bathrooms", "guests_included", "bedrooms", "beds",
-    "price", "weekly_price", "cleaning_fee", "text", "property_type", "room_type", "neighbourhood", "amenities", "space")
+    "price", "weekly_price", "cleaning_fee", "text", "property_type", "room_type", "neighbourhood", "amenities")
     .withColumn("review_scores_rating", $"review_scores_rating".cast("Double")).filter(!$"review_scores_rating".isNull)
     .withColumn("review_scores_location", $"review_scores_location".cast("Double")).filter(!$"review_scores_location".isNull)
     .withColumn("review_scores_accuracy", $"review_scores_accuracy".cast("Double")).filter(!$"review_scores_accuracy".isNull)
@@ -157,19 +155,8 @@ object AirbnbScoreGuess extends App {
   //
   val IDF = new IDF().setInputCol(countVectorizer.getOutputCol).setOutputCol("tfidf")
 
-  val tokenizerSpace = new RegexTokenizer().setPattern("\\W+").setGaps(true).setInputCol("space").setOutputCol("tokensSpace")
-  val stopWordRemoverSpace = new StopWordsRemover().setInputCol(tokenizerSpace.getOutputCol).setOutputCol("filteredSpace")
-  val stopWordRemoverFrSpace = new StopWordsRemover().setInputCol(stopWordRemoverSpace.getOutputCol).setOutputCol("filteredFrSpace").setLocale(Locale.FRENCH.toString())
-
-  val countVectorizerSpace = new CountVectorizer().setInputCol(stopWordRemoverFrSpace.getOutputCol).setOutputCol("TFSpace").setVocabSize(200)
-
-  //
-  val IDFSpace = new IDF().setInputCol(countVectorizer.getOutputCol).setOutputCol("tfidf_space")
-
-
   val vectorAssemblerMeanScore = new VectorAssembler().setInputCols(Array(
     "tfidf",
-    "tfidf_space",
     "room_onehot", "property_onehot",
     "neighbourhood_onehot", "features",
     "accommodates",
@@ -179,7 +166,7 @@ object AirbnbScoreGuess extends App {
     "beds",
     "weekly_price",
     // "mean_score",
-    "number_of_reviews",
+    //  "number_of_reviews",
     "cleaning_fee"
   //
   /*"review_scores_rating",
@@ -193,7 +180,6 @@ object AirbnbScoreGuess extends App {
 
   val vectorAssemblerWeeklyPrice = new VectorAssembler().setInputCols(Array(
     "tfidf",
-    "tfidf_space",
     "room_onehot",
     "property_onehot",
     "neighbourhood_onehot",
@@ -203,9 +189,9 @@ object AirbnbScoreGuess extends App {
     "guests_included",
     "bedrooms",
     "beds",
-    //"weekly_price",
-    "mean_score",
-    "number_of_reviews",
+    //    //"weekly_price",
+    //    "mean_score",
+    //    "number_of_reviews",
     "cleaning_fee")).setOutputCol("features_assembled_weekly")
 
   val rfMeanScore = new RandomForestRegressor().setLabelCol("mean_score").setPredictionCol("mean_score_prect_rf").setFeaturesCol(vectorAssemblerMeanScore.getOutputCol)
@@ -213,6 +199,15 @@ object AirbnbScoreGuess extends App {
   val rfCatScore = new RandomForestClassifier().setLabelCol("score_cat").setPredictionCol("score_cat_prect").setFeaturesCol(vectorAssemblerMeanScore.getOutputCol)
 
   val rfPrice = new RandomForestRegressor().setLabelCol("weekly_price").setPredictionCol("weekly_price_prect").setFeaturesCol(vectorAssemblerWeeklyPrice.getOutputCol)
+
+  val lrPrice = new LinearRegression()
+    .setLabelCol("weekly_price")
+    .setFeaturesCol(vectorAssemblerWeeklyPrice.getOutputCol)
+    .setPredictionCol("weekly_price_prect_lr")
+    .setRegParam(0.01)
+    .setElasticNetParam(0.8)
+    .setTol(1e-8)
+    .setMaxIter(1000)
 
   val lrMeanScore = new LinearRegression()
     .setLabelCol("mean_score")
@@ -223,65 +218,133 @@ object AirbnbScoreGuess extends App {
     .setTol(1e-8)
     .setMaxIter(1000)
 
-  val pipeline: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF, tokenizerSpace, stopWordRemoverSpace, stopWordRemoverFrSpace, countVectorizerSpace, IDFSpace,
-    indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerMeanScore, vectorAssemblerWeeklyPrice, rfMeanScore, rfCatScore, rfPrice, lrMeanScore))
+  
+  
+  val pipelinePrice: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF,
+    indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerWeeklyPrice, rfPrice, lrPrice)) //,rfMeanScore, rfCatScore, lrMeanScore))
 
   val Array(training, test) = dataSetFull.randomSplit(Array(0.9, 0.1), 999)
 
-  val model = pipeline.fit(training)
+  var model = pipelinePrice.fit(training)
 
-  val dfWithSimplePredictions = model.transform(test)
+  var dfWithSimplePredictions = model.transform(test)
 
   val evaluatorWeekly = new RegressionEvaluator()
     .setLabelCol("weekly_price")
     .setPredictionCol("weekly_price_prect")
     .setMetricName("rmse")
 
+  var rmse = evaluatorWeekly.evaluate(dfWithSimplePredictions)
+  println("The performance for the regression 'rfPrice' :" + rmse)
+
+  val evaluatorWeeklyLR = new RegressionEvaluator()
+    .setLabelCol("weekly_price")
+    .setPredictionCol("weekly_price_prect_lr")
+    .setMetricName("rmse")
+
+  rmse = evaluatorWeeklyLR.evaluate(dfWithSimplePredictions)
+  println("The performance for the regression 'lrPrice' :" + rmse)
+  
+  println("Gridding for regression of the price")
+  var paramGrid = new ParamGridBuilder()
+    .addGrid(lrPrice.elasticNetParam, Array(1e-2, 1e-1, 0.5, 0.8))
+    .addGrid(lrPrice.regParam, (0.1 to 0.3 by 0.05).toArray)
+    .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
+    .build()
+
+  var trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+
+  var trainSplit = trainValidationSplit.fit(training)
+  var testTransformed = trainSplit.transform(test)
+  var mse = evaluatorWeeklyLR.evaluate(testTransformed)
+  println(s"Root Mean Squared LR Price= ${mse}")
+
+  testTransformed.select("weekly_price", "weekly_price_prect_lr").write.csv("airbnb/weekly_price_lr.csv")
+
+  println("Gridding for random forest of the price")
+  paramGrid = new ParamGridBuilder()
+    .addGrid(rfPrice.maxDepth, (2 to 10 by 2).toArray)
+    .addGrid(rfPrice.impurity, Array("entropy", "gini"))
+    .addGrid(rfPrice.numTrees, (50 to 1000 by 200).toArray)
+    .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
+    .build()
+    
+
+  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+
+  trainSplit = trainValidationSplit.fit(training)
+  testTransformed = trainSplit.transform(test)
+  mse = evaluatorWeeklyLR.evaluate(testTransformed)
+  println(s"Root Mean Squared RF Price= ${mse}")
+  
+  testTransformed.select("weekly_price", "weekly_price_prect").write.csv("airbnb/weekly_price_rf.csv")
+
+  
+  /**
+   * Prediction du score
+   */
+  
+  val pipelineMean: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF,
+    indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerMeanScore, rfMeanScore, rfCatScore, lrMeanScore))
+
+ 
+  model = pipelinePrice.fit(training)
+
+  dfWithSimplePredictions = model.transform(test)
+
   val evaluatorRfMean = new RegressionEvaluator()
     .setLabelCol("mean_score")
     .setPredictionCol("mean_score_prect_rf")
     .setMetricName("rmse")
+
+  rmse = evaluatorRfMean.evaluate(dfWithSimplePredictions)
+  println("The performance for the regression 'rfMean' :" + rmse)
 
   val evaluatorLrMean = new RegressionEvaluator()
     .setLabelCol("mean_score")
     .setPredictionCol("mean_score_prect")
     .setMetricName("rmse")
 
-  var rmse = evaluatorWeekly.evaluate(dfWithSimplePredictions)
-  //dfWithSimplePredictions.select("weekly_price", "weekly_price_prect").show(100, false)
-
-  println("The performance for the regression 'rfPrice' :" + rmse)
-
-  rmse = evaluatorRfMean.evaluate(dfWithSimplePredictions)
-  println("The performance for the regression 'rfMean' :" + rmse)
-  
-  
   rmse = evaluatorLrMean.evaluate(dfWithSimplePredictions)
   println("The performance for the regression 'lrMean' :" + rmse)
-  
-/*
-  val paramGrid = new ParamGridBuilder()
+
+
+    println("Gridding for regression of the price")
+  paramGrid = new ParamGridBuilder()
     .addGrid(lrMeanScore.elasticNetParam, Array(1e-2, 1e-1, 0.5, 0.8))
     .addGrid(lrMeanScore.regParam, (0.1 to 0.3 by 0.05).toArray)
-    //.addGrid(rf., (0.1 to 0.3 by 0.05).toArray)
-    //.addGrid(countVectorizer.vocabSize, (50 to 200 by 50).toArray)
+    .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
     .build()
 
-  val evaluator = new RegressionEvaluator()
-    .setLabelCol("mean_score")
-    .setPredictionCol("mean_score_prect")
-    .setMetricName("rmse")
-  //dfWithSimplePredictions.select("weekly_price", "prediction").write.csv("airbnb/results.csv")
+  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorLrMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
 
-  val trainValidationSplit = new TrainValidationSplit().setEstimator(pipeline).setEvaluator(evaluator).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+  trainSplit = trainValidationSplit.fit(training)
+  testTransformed = trainSplit.transform(test)
+  mse = evaluatorLrMean.evaluate(testTransformed)
+  println(s"Root Mean Squared LR Mean= ${mse}")
 
-  val trainSplit = trainValidationSplit.fit(training)
-  val testTransformed = trainSplit.transform(test)
-  val mse = evaluator.evaluate(testTransformed)
-  println(s"Root Mean Squared = ${mse}")
+  testTransformed.select("mean_score", "mean_score_prect").write.csv("airbnb/mean_score_lr.csv")
 
-  println(s"Root Mean Squared Error (RMSE) on test data = $rmse")*/
+  println("Gridding for random forest of the price")
+  paramGrid = new ParamGridBuilder()
+    .addGrid(rfMeanScore.maxDepth, (2 to 10 by 2).toArray)
+    .addGrid(rfMeanScore.impurity, Array("entropy", "gini"))
+    .addGrid(rfMeanScore.numTrees, (50 to 1000 by 200).toArray)
+    .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
+    .build()
+    
 
+  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorRfMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+
+  trainSplit = trainValidationSplit.fit(training)
+  testTransformed = trainSplit.transform(test)
+  mse = evaluatorRfMean.evaluate(testTransformed)
+  println(s"Root Mean Squared  RF Mean= ${mse}")
+  
+  testTransformed.select("mean_score", "mean_score_prect_rf").write.csv("airbnb/mean_score_rf.csv")
+    
+  
+  
   val f1Evaluator = new MulticlassClassificationEvaluator().setLabelCol("score_cat").setPredictionCol("score_cat_prect").
     setMetricName("f1")
   val f1 = f1Evaluator.evaluate(dfWithSimplePredictions)
@@ -297,7 +360,6 @@ object AirbnbScoreGuess extends App {
   println(s"F1 precision = ${f1}")
   println(s"Recall = ${recall}")
   println(s"Precision = ${precision}")
-
   dfWithSimplePredictions.groupBy("score_cat", "score_cat_prect").count.show()
 
   /*  trainSplit.save("airbnb/model_fitted.sav")*/
