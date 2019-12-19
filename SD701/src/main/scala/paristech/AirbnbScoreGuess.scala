@@ -245,6 +245,7 @@ object AirbnbScoreGuess extends App {
   rmse = evaluatorWeeklyLR.evaluate(dfWithSimplePredictions)
   println("The performance for the regression 'lrPrice' :" + rmse)
   
+  
   println("Gridding for regression of the price")
   var paramGrid = new ParamGridBuilder()
     .addGrid(lrPrice.elasticNetParam, Array(1e-2, 1e-1, 0.5, 0.8))
@@ -258,13 +259,15 @@ object AirbnbScoreGuess extends App {
   var testTransformed = trainSplit.transform(test)
   var mse = evaluatorWeeklyLR.evaluate(testTransformed)
   println(s"Root Mean Squared LR Price= ${mse}")
+  println("Les valeurs des paramètres pour ce modèle sont les suivants:")
+  println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
 
   testTransformed.select("weekly_price", "weekly_price_prect_lr").write.csv("airbnb/weekly_price_lr.csv")
 
   println("Gridding for random forest of the price")
   paramGrid = new ParamGridBuilder()
     .addGrid(rfPrice.maxDepth, (2 to 10 by 2).toArray)
-    .addGrid(rfPrice.impurity, Array("entropy", "gini"))
+    //.addGrid(rfPrice.impurity, Array("entropy", "gini"))
     .addGrid(rfPrice.numTrees, (50 to 1000 by 200).toArray)
     .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
     .build()
@@ -276,7 +279,8 @@ object AirbnbScoreGuess extends App {
   testTransformed = trainSplit.transform(test)
   mse = evaluatorWeeklyLR.evaluate(testTransformed)
   println(s"Root Mean Squared RF Price= ${mse}")
-  
+  println("Les valeurs des paramètres pour ce modèle sont les suivants:")
+  println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
   testTransformed.select("weekly_price", "weekly_price_prect").write.csv("airbnb/weekly_price_rf.csv")
 
   
@@ -322,13 +326,14 @@ object AirbnbScoreGuess extends App {
   testTransformed = trainSplit.transform(test)
   mse = evaluatorLrMean.evaluate(testTransformed)
   println(s"Root Mean Squared LR Mean= ${mse}")
-
+  println("Les valeurs des paramètres pour ce modèle sont les suivants:")
+  println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
   testTransformed.select("mean_score", "mean_score_prect").write.csv("airbnb/mean_score_lr.csv")
 
   println("Gridding for random forest of the price")
   paramGrid = new ParamGridBuilder()
     .addGrid(rfMeanScore.maxDepth, (2 to 10 by 2).toArray)
-    .addGrid(rfMeanScore.impurity, Array("entropy", "gini"))
+    //.addGrid(rfMeanScore.impurity, Array("entropy", "gini"))
     .addGrid(rfMeanScore.numTrees, (50 to 1000 by 200).toArray)
     .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
     .build()
@@ -340,7 +345,8 @@ object AirbnbScoreGuess extends App {
   testTransformed = trainSplit.transform(test)
   mse = evaluatorRfMean.evaluate(testTransformed)
   println(s"Root Mean Squared  RF Mean= ${mse}")
-  
+  println("Les valeurs des paramètres pour ce modèle sont les suivants:")
+  println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
   testTransformed.select("mean_score", "mean_score_prect_rf").write.csv("airbnb/mean_score_rf.csv")
     
   
