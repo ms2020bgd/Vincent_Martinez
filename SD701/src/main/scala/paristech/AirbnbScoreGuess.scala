@@ -51,6 +51,9 @@ object AirbnbScoreGuess extends App {
   // Import the dataFrame
   import spark.implicits._
 
+  val PREDICT_SCORE = true;
+  val PREDICT_PRICE = false;
+
   val datasetNew = spark.read.option("header", true)
     .option("multiline", true).csv("airbnb/airbnb_paris2.csv")
   datasetNew.printSchema()
@@ -218,156 +221,152 @@ object AirbnbScoreGuess extends App {
     .setTol(1e-8)
     .setMaxIter(1000)
 
-  
-  
-  val pipelinePrice: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF,
-    indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerWeeklyPrice, rfPrice, lrPrice)) //,rfMeanScore, rfCatScore, lrMeanScore))
-
   val Array(training, test) = dataSetFull.randomSplit(Array(0.9, 0.1), 999)
 
-  var model = pipelinePrice.fit(training)
+  if (PREDICT_PRICE) {
 
-  var dfWithSimplePredictions = model.transform(test)
+    val pipelinePrice: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF,
+      indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerWeeklyPrice, rfPrice, lrPrice)) //,rfMeanScore, rfCatScore, lrMeanScore))
 
-  val evaluatorWeekly = new RegressionEvaluator()
-    .setLabelCol("weekly_price")
-    .setPredictionCol("weekly_price_prect")
-    .setMetricName("rmse")
+    var model = pipelinePrice.fit(training)
 
-  var rmse = evaluatorWeekly.evaluate(dfWithSimplePredictions)
-  println("The performance for the regression 'rfPrice' :" + rmse)
+    var dfWithSimplePredictions = model.transform(test)
 
-  val evaluatorWeeklyLR = new RegressionEvaluator()
-    .setLabelCol("weekly_price")
-    .setPredictionCol("weekly_price_prect_lr")
-    .setMetricName("rmse")
+    val evaluatorWeekly = new RegressionEvaluator()
+      .setLabelCol("weekly_price")
+      .setPredictionCol("weekly_price_prect")
+      .setMetricName("rmse")
 
-  rmse = evaluatorWeeklyLR.evaluate(dfWithSimplePredictions)
-  println("The performance for the regression 'lrPrice' :" + rmse)
-  
-  
-  println("Gridding for regression of the price")
-  var paramGrid = new ParamGridBuilder()
-    .addGrid(lrPrice.elasticNetParam, Array(1e-2, 1e-1, 0.5, 0.8))
-    .addGrid(lrPrice.regParam, (0.1 to 0.3 by 0.05).toArray)
-    .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
-    .build()
+    var rmse = evaluatorWeekly.evaluate(dfWithSimplePredictions)
+    println("The performance for the regression 'rfPrice' :" + rmse)
 
-  var trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
+    val evaluatorWeeklyLR = new RegressionEvaluator()
+      .setLabelCol("weekly_price")
+      .setPredictionCol("weekly_price_prect_lr")
+      .setMetricName("rmse")
 
-  var trainSplit = trainValidationSplit.fit(training)
-  var testTransformed = trainSplit.transform(test)
-  var mse = evaluatorWeeklyLR.evaluate(testTransformed)
-  println(s"Root Mean Squared LR Price= ${mse}")
-  println("Les valeurs des paramètres pour ce modèle sont les suivants:")
-  println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
+    rmse = evaluatorWeeklyLR.evaluate(dfWithSimplePredictions)
+    println("The performance for the regression 'lrPrice' :" + rmse)
 
-  testTransformed.select("weekly_price", "weekly_price_prect_lr").write.csv("airbnb/weekly_price_lr.csv")
+    println("Gridding for regression of the price")
+    var paramGrid = new ParamGridBuilder()
+      .addGrid(lrPrice.elasticNetParam, Array(1e-2, 1e-1, 0.5, 0.8))
+      .addGrid(lrPrice.regParam, (0.1 to 0.3 by 0.05).toArray)
+      .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
+      .build()
 
-  println("Gridding for random forest of the price")
-  paramGrid = new ParamGridBuilder()
-    .addGrid(rfPrice.maxDepth, (2 to 10 by 2).toArray)
-    //.addGrid(rfPrice.impurity, Array("entropy", "gini"))
-    .addGrid(rfPrice.numTrees, (50 to 1000 by 200).toArray)
-    .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
-    .build()
-    
+    var trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
 
-  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
+    var trainSplit = trainValidationSplit.fit(training)
+    var testTransformed = trainSplit.transform(test)
+    var mse = evaluatorWeeklyLR.evaluate(testTransformed)
+    println(s"Root Mean Squared LR Price= ${mse}")
+    println("Les valeurs des paramètres pour ce modèle sont les suivants:")
+    println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
 
-  trainSplit = trainValidationSplit.fit(training)
-  testTransformed = trainSplit.transform(test)
-  mse = evaluatorWeeklyLR.evaluate(testTransformed)
-  println(s"Root Mean Squared RF Price= ${mse}")
-  println("Les valeurs des paramètres pour ce modèle sont les suivants:")
-  println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
-  testTransformed.select("weekly_price", "weekly_price_prect").write.csv("airbnb/weekly_price_rf.csv")
+    testTransformed.select("weekly_price", "weekly_price_prect_lr").write.csv("airbnb/weekly_price_lr.csv")
 
-  
+    println("Gridding for random forest of the price")
+    paramGrid = new ParamGridBuilder()
+      .addGrid(rfPrice.maxDepth, (2 to 10 by 2).toArray)
+      //.addGrid(rfPrice.impurity, Array("entropy", "gini"))
+      .addGrid(rfPrice.numTrees, (50 to 1000 by 200).toArray)
+      .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
+      .build()
+
+    trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
+
+    trainSplit = trainValidationSplit.fit(training)
+    testTransformed = trainSplit.transform(test)
+    mse = evaluatorWeeklyLR.evaluate(testTransformed)
+    println(s"Root Mean Squared RF Price= ${mse}")
+    println("Les valeurs des paramètres pour ce modèle sont les suivants:")
+    println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
+    testTransformed.select("weekly_price", "weekly_price_prect").write.csv("airbnb/weekly_price_rf.csv")
+  }
+
   /**
    * Prediction du score
    */
-  
-  val pipelineMean: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF,
-    indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerMeanScore, rfMeanScore, rfCatScore, lrMeanScore))
 
- 
-  model = pipelineMean.fit(training)
+  if (PREDICT_SCORE) {
 
-  dfWithSimplePredictions = model.transform(test)
+    val pipelineMean: Pipeline = new Pipeline().setStages(Array(tokenizer, stopWordRemover, stopWordRemoverFr, countVectorizer, IDF,
+      indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerMeanScore, rfMeanScore, rfCatScore, lrMeanScore))
 
-  val evaluatorRfMean = new RegressionEvaluator()
-    .setLabelCol("mean_score")
-    .setPredictionCol("mean_score_prect_rf")
-    .setMetricName("rmse")
+    var model = pipelineMean.fit(training)
 
-  rmse = evaluatorRfMean.evaluate(dfWithSimplePredictions)
-  println("The performance for the regression 'rfMean' :" + rmse)
+    var dfWithSimplePredictions = model.transform(test)
 
-  val evaluatorLrMean = new RegressionEvaluator()
-    .setLabelCol("mean_score")
-    .setPredictionCol("mean_score_prect")
-    .setMetricName("rmse")
+    val evaluatorRfMean = new RegressionEvaluator()
+      .setLabelCol("mean_score")
+      .setPredictionCol("mean_score_prect_rf")
+      .setMetricName("rmse")
 
-  rmse = evaluatorLrMean.evaluate(dfWithSimplePredictions)
-  println("The performance for the regression 'lrMean' :" + rmse)
+    var rmse = evaluatorRfMean.evaluate(dfWithSimplePredictions)
+    println("The performance for the regression 'rfMean' :" + rmse)
 
+    val evaluatorLrMean = new RegressionEvaluator()
+      .setLabelCol("mean_score")
+      .setPredictionCol("mean_score_prect")
+      .setMetricName("rmse")
+
+    rmse = evaluatorLrMean.evaluate(dfWithSimplePredictions)
+    println("The performance for the regression 'lrMean' :" + rmse)
 
     println("Gridding for regression of the price")
-  paramGrid = new ParamGridBuilder()
-    .addGrid(lrMeanScore.elasticNetParam, Array(1e-2, 1e-1, 0.5, 0.8))
-    .addGrid(lrMeanScore.regParam, (0.1 to 0.3 by 0.05).toArray)
-    .addGrid(countVectorizer.vocabSize, (30 to 100 by 15).toArray)
-    .build()
+    var paramGrid = new ParamGridBuilder()
+      .addGrid(lrMeanScore.elasticNetParam, Array(1e-2, 1e-1, 0.5, 0.8))
+      .addGrid(lrMeanScore.regParam, (0.1 to 0.3 by 0.05).toArray)
+      .addGrid(countVectorizer.vocabSize, (30 to 100 by 15).toArray)
+      .build()
 
-  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorLrMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
+    var trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorLrMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
 
-  trainSplit = trainValidationSplit.fit(training)
-  testTransformed = trainSplit.transform(test)
-  mse = evaluatorLrMean.evaluate(testTransformed)
-  println(s"Root Mean Squared LR Mean= ${mse}")
-  println("Les valeurs des paramètres pour ce modèle sont les suivants:")
-  println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
-  testTransformed.select("mean_score", "mean_score_prect").write.csv("airbnb/mean_score_lr.csv")
+    var trainSplit = trainValidationSplit.fit(training)
+    var testTransformed = trainSplit.transform(test)
+    var mse = evaluatorLrMean.evaluate(testTransformed)
+    println(s"Root Mean Squared LR Mean= ${mse}")
+    println("Les valeurs des paramètres pour ce modèle sont les suivants:")
+    println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
+    testTransformed.select("mean_score", "mean_score_prect").write.csv("airbnb/mean_score_lr.csv")
 
-  println("Gridding for random forest of the price")
-  paramGrid = new ParamGridBuilder()
-    .addGrid(rfMeanScore.maxDepth, (2 to 10 by 2).toArray)
-    //.addGrid(rfMeanScore.impurity, Array("entropy", "gini"))
-    .addGrid(rfMeanScore.numTrees, (10 to 200 by 50).toArray)
-    .addGrid(countVectorizer.vocabSize, (30 to 100 by 15).toArray)
-    .build()
-    
+    println("Gridding for random forest of the price")
+    paramGrid = new ParamGridBuilder()
+      .addGrid(rfMeanScore.maxDepth, (2 to 10 by 2).toArray)
+      //.addGrid(rfMeanScore.impurity, Array("entropy", "gini"))
+      .addGrid(rfMeanScore.numTrees, (10 to 200 by 50).toArray)
+      .addGrid(countVectorizer.vocabSize, (30 to 100 by 15).toArray)
+      .build()
 
-  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorRfMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
+    trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorRfMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
 
-  trainSplit = trainValidationSplit.fit(training)
-  testTransformed = trainSplit.transform(test)
-  mse = evaluatorRfMean.evaluate(testTransformed)
-  println(s"Root Mean Squared  RF Mean= ${mse}")
-  println("Les valeurs des paramètres pour ce modèle sont les suivants:")
-  println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
-  testTransformed.select("mean_score", "mean_score_prect_rf").write.csv("airbnb/mean_score_rf.csv")
-    
-  
-  
-  val f1Evaluator = new MulticlassClassificationEvaluator().setLabelCol("score_cat").setPredictionCol("score_cat_prect").
-    setMetricName("f1")
-  val f1 = f1Evaluator.evaluate(dfWithSimplePredictions)
+    trainSplit = trainValidationSplit.fit(training)
+    testTransformed = trainSplit.transform(test)
+    mse = evaluatorRfMean.evaluate(testTransformed)
+    println(s"Root Mean Squared  RF Mean= ${mse}")
+    println("Les valeurs des paramètres pour ce modèle sont les suivants:")
+    println(trainSplit.getEstimatorParamMaps(trainSplit.validationMetrics.indexOf(trainSplit.validationMetrics.max)))
+    testTransformed.select("mean_score", "mean_score_prect_rf").write.csv("airbnb/mean_score_rf.csv")
 
-  val precisionEvaluator = new MulticlassClassificationEvaluator().setLabelCol("score_cat").setPredictionCol("score_cat_prect").
-    setMetricName("weightedPrecision")
-  val precision = precisionEvaluator.evaluate(dfWithSimplePredictions)
+    val f1Evaluator = new MulticlassClassificationEvaluator().setLabelCol("score_cat").setPredictionCol("score_cat_prect").
+      setMetricName("f1")
+    val f1 = f1Evaluator.evaluate(dfWithSimplePredictions)
 
-  val recallEvaluator = new MulticlassClassificationEvaluator().setLabelCol("score_cat").setPredictionCol("score_cat_prect").
-    setMetricName("weightedRecall")
-  val recall = recallEvaluator.evaluate(dfWithSimplePredictions)
+    val precisionEvaluator = new MulticlassClassificationEvaluator().setLabelCol("score_cat").setPredictionCol("score_cat_prect").
+      setMetricName("weightedPrecision")
+    val precision = precisionEvaluator.evaluate(dfWithSimplePredictions)
 
-  println(s"F1 precision = ${f1}")
-  println(s"Recall = ${recall}")
-  println(s"Precision = ${precision}")
-  dfWithSimplePredictions.groupBy("score_cat", "score_cat_prect").count.show()
+    val recallEvaluator = new MulticlassClassificationEvaluator().setLabelCol("score_cat").setPredictionCol("score_cat_prect").
+      setMetricName("weightedRecall")
+    val recall = recallEvaluator.evaluate(dfWithSimplePredictions)
 
+    println(s"F1 precision = ${f1}")
+    println(s"Recall = ${recall}")
+    println(s"Precision = ${precision}")
+    dfWithSimplePredictions.groupBy("score_cat", "score_cat_prect").count.show()
+
+  }
   /*  trainSplit.save("airbnb/model_fitted.sav")*/
 
 }
