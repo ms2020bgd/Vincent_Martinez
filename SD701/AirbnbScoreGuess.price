@@ -1,0 +1,191 @@
+19/12/20 09:11:11 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+19/12/20 09:11:12 INFO SparkContext: Running Spark version 2.4.4
+19/12/20 09:11:12 WARN SparkConf: Note that spark.local.dir will be overridden by the value set by the cluster manager (via SPARK_LOCAL_DIRS in mesos/standalone/kubernetes and LOCAL_DIRS in YARN).
+19/12/20 09:11:12 INFO SparkContext: Submitted application: Airbnb Score Guess
+19/12/20 09:11:12 INFO SecurityManager: Changing view acls to: iaw
+19/12/20 09:11:12 INFO SecurityManager: Changing modify acls to: iaw
+19/12/20 09:11:12 INFO SecurityManager: Changing view acls groups to: 
+19/12/20 09:11:12 INFO SecurityManager: Changing modify acls groups to: 
+19/12/20 09:11:12 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users  with view permissions: Set(iaw); groups with view permissions: Set(); users  with modify permissions: Set(iaw); groups with modify permissions: Set()
+19/12/20 09:11:12 INFO Utils: Successfully started service 'sparkDriver' on port 42164.
+19/12/20 09:11:12 INFO SparkEnv: Registering MapOutputTracker
+19/12/20 09:11:12 INFO SparkEnv: Registering BlockManagerMaster
+19/12/20 09:11:12 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+19/12/20 09:11:12 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+19/12/20 09:11:12 INFO DiskBlockManager: Created local directory at /data-devel/martinez/tmp/blockmgr-9e39cc72-0646-486e-93f8-de9cf111b14d
+19/12/20 09:11:12 INFO MemoryStore: MemoryStore started with capacity 12.6 GB
+19/12/20 09:11:12 INFO SparkEnv: Registering OutputCommitCoordinator
+19/12/20 09:11:12 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+19/12/20 09:11:12 INFO SparkUI: Bound SparkUI to 0.0.0.0, and started at http://tapc118.geomath.fr:4040
+19/12/20 09:11:12 INFO SparkContext: Added JAR file:/data-devel/martinez/Vincent_Martinez/SD701/target/scala-2.11/spark_airbnb_paris-assembly-1.0.jar at spark://tapc118.geomath.fr:42164/jars/spark_airbnb_paris-assembly-1.0.jar with timestamp 1576829472907
+19/12/20 09:11:12 INFO Executor: Starting executor ID driver on host localhost
+19/12/20 09:11:13 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 34304.
+19/12/20 09:11:13 INFO NettyBlockTransferService: Server created on tapc118.geomath.fr:34304
+19/12/20 09:11:13 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+19/12/20 09:11:13 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, tapc118.geomath.fr, 34304, None)
+19/12/20 09:11:13 INFO BlockManagerMasterEndpoint: Registering block manager tapc118.geomath.fr:34304 with 12.6 GB RAM, BlockManagerId(driver, tapc118.geomath.fr, 34304, None)
+19/12/20 09:11:13 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, tapc118.geomath.fr, 34304, None)
+19/12/20 09:11:13 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, tapc118.geomath.fr, 34304, None)
+19/12/20 09:11:13 INFO EventLoggingListener: Logging events to file:/data-devel/martinez/tmp/local-1576829472943
+root
+ |-- id: string (nullable = true)
+ |-- listing_url: string (nullable = true)
+ |-- scrape_id: string (nullable = true)
+ |-- last_scraped: string (nullable = true)
+ |-- name: string (nullable = true)
+ |-- summary: string (nullable = true)
+ |-- space: string (nullable = true)
+ |-- description: string (nullable = true)
+ |-- experiences_offered: string (nullable = true)
+ |-- neighborhood_overview: string (nullable = true)
+ |-- notes: string (nullable = true)
+ |-- transit: string (nullable = true)
+ |-- access: string (nullable = true)
+ |-- interaction: string (nullable = true)
+ |-- house_rules: string (nullable = true)
+ |-- thumbnail_url: string (nullable = true)
+ |-- medium_url: string (nullable = true)
+ |-- picture_url: string (nullable = true)
+ |-- xl_picture_url: string (nullable = true)
+ |-- host_id: string (nullable = true)
+ |-- host_url: string (nullable = true)
+ |-- host_name: string (nullable = true)
+ |-- host_since: string (nullable = true)
+ |-- host_location: string (nullable = true)
+ |-- host_about: string (nullable = true)
+ |-- host_response_time: string (nullable = true)
+ |-- host_response_rate: string (nullable = true)
+ |-- host_acceptance_rate: string (nullable = true)
+ |-- host_is_superhost: string (nullable = true)
+ |-- host_thumbnail_url: string (nullable = true)
+ |-- host_picture_url: string (nullable = true)
+ |-- host_neighbourhood: string (nullable = true)
+ |-- host_listings_count: string (nullable = true)
+ |-- host_total_listings_count: string (nullable = true)
+ |-- host_verifications: string (nullable = true)
+ |-- host_has_profile_pic: string (nullable = true)
+ |-- host_identity_verified: string (nullable = true)
+ |-- street: string (nullable = true)
+ |-- neighbourhood: string (nullable = true)
+ |-- neighbourhood_cleansed: string (nullable = true)
+ |-- neighbourhood_group_cleansed: string (nullable = true)
+ |-- city: string (nullable = true)
+ |-- state: string (nullable = true)
+ |-- zipcode: string (nullable = true)
+ |-- market: string (nullable = true)
+ |-- smart_location: string (nullable = true)
+ |-- country_code: string (nullable = true)
+ |-- country: string (nullable = true)
+ |-- latitude: string (nullable = true)
+ |-- longitude: string (nullable = true)
+ |-- is_location_exact: string (nullable = true)
+ |-- property_type: string (nullable = true)
+ |-- room_type: string (nullable = true)
+ |-- accommodates: string (nullable = true)
+ |-- bathrooms: string (nullable = true)
+ |-- bedrooms: string (nullable = true)
+ |-- beds: string (nullable = true)
+ |-- bed_type: string (nullable = true)
+ |-- amenities: string (nullable = true)
+ |-- square_feet: string (nullable = true)
+ |-- price: string (nullable = true)
+ |-- weekly_price: string (nullable = true)
+ |-- monthly_price: string (nullable = true)
+ |-- security_deposit: string (nullable = true)
+ |-- cleaning_fee: string (nullable = true)
+ |-- guests_included: string (nullable = true)
+ |-- extra_people: string (nullable = true)
+ |-- minimum_nights: string (nullable = true)
+ |-- maximum_nights: string (nullable = true)
+ |-- minimum_minimum_nights: string (nullable = true)
+ |-- maximum_minimum_nights: string (nullable = true)
+ |-- minimum_maximum_nights: string (nullable = true)
+ |-- maximum_maximum_nights: string (nullable = true)
+ |-- minimum_nights_avg_ntm: string (nullable = true)
+ |-- maximum_nights_avg_ntm: string (nullable = true)
+ |-- calendar_updated: string (nullable = true)
+ |-- has_availability: string (nullable = true)
+ |-- availability_30: string (nullable = true)
+ |-- availability_60: string (nullable = true)
+ |-- availability_90: string (nullable = true)
+ |-- availability_365: string (nullable = true)
+ |-- calendar_last_scraped: string (nullable = true)
+ |-- number_of_reviews: string (nullable = true)
+ |-- number_of_reviews_ltm: string (nullable = true)
+ |-- first_review: string (nullable = true)
+ |-- last_review: string (nullable = true)
+ |-- review_scores_rating: string (nullable = true)
+ |-- review_scores_accuracy: string (nullable = true)
+ |-- review_scores_cleanliness: string (nullable = true)
+ |-- review_scores_checkin: string (nullable = true)
+ |-- review_scores_communication: string (nullable = true)
+ |-- review_scores_location: string (nullable = true)
+ |-- review_scores_value: string (nullable = true)
+ |-- requires_license: string (nullable = true)
+ |-- license: string (nullable = true)
+ |-- jurisdiction_names: string (nullable = true)
+ |-- instant_bookable: string (nullable = true)
+ |-- is_business_travel_ready: string (nullable = true)
+ |-- cancellation_policy: string (nullable = true)
+ |-- require_guest_profile_picture: string (nullable = true)
+ |-- require_guest_phone_verification: string (nullable = true)
+ |-- calculated_host_listings_count: string (nullable = true)
+ |-- calculated_host_listings_count_entire_homes: string (nullable = true)
+ |-- calculated_host_listings_count_private_rooms: string (nullable = true)
+ |-- calculated_host_listings_count_shared_rooms: string (nullable = true)
+ |-- reviews_per_month: string (nullable = true)
+
+19/12/20 09:11:23 WARN Utils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.debug.maxToStringFields' in SparkEnv.conf.
+19/12/20 09:14:13 WARN BLAS: Failed to load implementation from: com.github.fommil.netlib.NativeSystemBLAS
+19/12/20 09:14:13 WARN BLAS: Failed to load implementation from: com.github.fommil.netlib.NativeRefBLAS
+The performance for the regression 'rfPrice' :223.09207290996665
+The performance for the regression 'lrPrice' :199.43489226585913
+Gridding for regression of the price
+Root Mean Squared LR Price= 196.25443394128058
+Les valeurs des paramètres pour ce modèle sont les suivants:
+{
+	linReg_c4af2efaf1e6-elasticNetParam: 0.01,
+	linReg_c4af2efaf1e6-regParam: 0.1,
+	cntVec_f7faaf479a2a-vocabSize: 50
+}
+Gridding for random forest of the price
+Root Mean Squared RF Price= 197.17839117391836
+Les valeurs des paramètres pour ce modèle sont les suivants:
+{
+	rfr_62752fd424e6-maxDepth: 2,
+	rfr_62752fd424e6-numTrees: 50,
+	cntVec_f7faaf479a2a-vocabSize: 50
+}
+Exception in thread "main" java.lang.IllegalArgumentException: Field "mean_score_prect_rf" does not exist.
+Available fields: review_scores_location, review_scores_accuracy, review_scores_communication, review_scores_cleanliness, review_scores_value, review_scores_checkin, review_scores_rating, number_of_reviews, accommodates, bathrooms, guests_included, bedrooms, beds, price, weekly_price, cleaning_fee, text, property_type, room_type, neighbourhood, amenities, mean_score, score_cat, sparseAmenities, features, tokens, filtered, filteredFr, TF, tfidf, room_index, property_index, neighbourhood_index, room_onehot, property_onehot, neighbourhood_onehot, features_assembled_weekly, weekly_price_prect, weekly_price_prect_lr
+	at org.apache.spark.sql.types.StructType$$anonfun$apply$1.apply(StructType.scala:274)
+	at org.apache.spark.sql.types.StructType$$anonfun$apply$1.apply(StructType.scala:274)
+	at scala.collection.MapLike$class.getOrElse(MapLike.scala:128)
+	at scala.collection.AbstractMap.getOrElse(Map.scala:59)
+	at org.apache.spark.sql.types.StructType.apply(StructType.scala:273)
+	at org.apache.spark.ml.util.SchemaUtils$.checkColumnTypes(SchemaUtils.scala:58)
+	at org.apache.spark.ml.evaluation.RegressionEvaluator.evaluate(RegressionEvaluator.scala:77)
+	at paristech.AirbnbScoreGuess$.delayedEndpoint$paristech$AirbnbScoreGuess$1(AirbnbScoreGuess.scala:304)
+	at paristech.AirbnbScoreGuess$delayedInit$body.apply(AirbnbScoreGuess.scala:31)
+	at scala.Function0$class.apply$mcV$sp(Function0.scala:34)
+	at scala.runtime.AbstractFunction0.apply$mcV$sp(AbstractFunction0.scala:12)
+	at scala.App$$anonfun$main$1.apply(App.scala:76)
+	at scala.App$$anonfun$main$1.apply(App.scala:76)
+	at scala.collection.immutable.List.foreach(List.scala:392)
+	at scala.collection.generic.TraversableForwarder$class.foreach(TraversableForwarder.scala:35)
+	at scala.App$class.main(App.scala:76)
+	at paristech.AirbnbScoreGuess$.main(AirbnbScoreGuess.scala:31)
+	at paristech.AirbnbScoreGuess.main(AirbnbScoreGuess.scala)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.apache.spark.deploy.JavaMainApplication.start(SparkApplication.scala:52)
+	at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:845)
+	at org.apache.spark.deploy.SparkSubmit.doRunMain$1(SparkSubmit.scala:161)
+	at org.apache.spark.deploy.SparkSubmit.submit(SparkSubmit.scala:184)
+	at org.apache.spark.deploy.SparkSubmit.doSubmit(SparkSubmit.scala:86)
+	at org.apache.spark.deploy.SparkSubmit$$anon$2.doSubmit(SparkSubmit.scala:920)
+	at org.apache.spark.deploy.SparkSubmit$.main(SparkSubmit.scala:929)
+	at org.apache.spark.deploy.SparkSubmit.main(SparkSubmit.scala)

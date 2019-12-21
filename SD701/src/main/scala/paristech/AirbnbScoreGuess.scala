@@ -253,7 +253,7 @@ object AirbnbScoreGuess extends App {
     .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
     .build()
 
-  var trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+  var trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
 
   var trainSplit = trainValidationSplit.fit(training)
   var testTransformed = trainSplit.transform(test)
@@ -273,7 +273,7 @@ object AirbnbScoreGuess extends App {
     .build()
     
 
-  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelinePrice).setEvaluator(evaluatorWeeklyLR).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
 
   trainSplit = trainValidationSplit.fit(training)
   testTransformed = trainSplit.transform(test)
@@ -292,7 +292,7 @@ object AirbnbScoreGuess extends App {
     indexerRoomType, indexerPropertyType, indexerNeighbourhoudType, oneHotEncorderCountry, vectorAssemblerMeanScore, rfMeanScore, rfCatScore, lrMeanScore))
 
  
-  model = pipelinePrice.fit(training)
+  model = pipelineMean.fit(training)
 
   dfWithSimplePredictions = model.transform(test)
 
@@ -317,10 +317,10 @@ object AirbnbScoreGuess extends App {
   paramGrid = new ParamGridBuilder()
     .addGrid(lrMeanScore.elasticNetParam, Array(1e-2, 1e-1, 0.5, 0.8))
     .addGrid(lrMeanScore.regParam, (0.1 to 0.3 by 0.05).toArray)
-    .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
+    .addGrid(countVectorizer.vocabSize, (30 to 100 by 15).toArray)
     .build()
 
-  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorLrMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorLrMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
 
   trainSplit = trainValidationSplit.fit(training)
   testTransformed = trainSplit.transform(test)
@@ -334,12 +334,12 @@ object AirbnbScoreGuess extends App {
   paramGrid = new ParamGridBuilder()
     .addGrid(rfMeanScore.maxDepth, (2 to 10 by 2).toArray)
     //.addGrid(rfMeanScore.impurity, Array("entropy", "gini"))
-    .addGrid(rfMeanScore.numTrees, (50 to 1000 by 200).toArray)
-    .addGrid(countVectorizer.vocabSize, (50 to 500 by 50).toArray)
+    .addGrid(rfMeanScore.numTrees, (10 to 200 by 50).toArray)
+    .addGrid(countVectorizer.vocabSize, (30 to 100 by 15).toArray)
     .build()
     
 
-  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorRfMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7)
+  trainValidationSplit = new TrainValidationSplit().setEstimator(pipelineMean).setEvaluator(evaluatorRfMean).setEstimatorParamMaps(paramGrid).setTrainRatio(0.7).setParallelism(8)
 
   trainSplit = trainValidationSplit.fit(training)
   testTransformed = trainSplit.transform(test)
